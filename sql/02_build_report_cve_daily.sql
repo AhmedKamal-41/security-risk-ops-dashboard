@@ -23,7 +23,11 @@ cve_report_data AS (
         c.cvss_score,
         CASE WHEN k.cve_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_kev,
         e.epss_score,
-        (CURRENT_DATE - c.published_date)::INT AS age_days,
+        CASE 
+            WHEN c.published_date IS NOT NULL 
+            THEN (CURRENT_DATE - c.published_date)::INT 
+            ELSE NULL 
+        END AS age_days,
         NULL::NUMERIC AS risk_score,
         k.vendor,
         k.product

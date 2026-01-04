@@ -6,7 +6,9 @@ import argparse
 from pipelines.db import run_sql_file
 from pipelines.ingest_kev import run_kev_ingest
 from pipelines.ingest_epss import run_epss_ingest
+from pipelines.ingest_cve import run_cve_ingest
 from pipelines.build_reports import run_reports_build
+from pipelines.alerting import run_alerting
 
 
 def create_tables():
@@ -41,7 +43,11 @@ def ingest_cve():
     print("=" * 60)
     print("Step 4: Ingesting CVE data...")
     print("=" * 60)
-    print("⚠ CVE ingestion not yet implemented\n")
+    # Get API key from config if available
+    import config
+    api_key = getattr(config, 'NVD_API_KEY', None)
+    inserted, updated = run_cve_ingest(days_back=365, api_key=api_key)
+    print(f"✓ CVE ingestion complete: {inserted} inserted, {updated} updated\n")
 
 
 def build_reports():
@@ -58,7 +64,43 @@ def run_alerts():
     print("=" * 60)
     print("Step 6: Running alerts...")
     print("=" * 60)
-    print("⚠ Alerting not yet implemented\n")
+    alert_count = run_alerting()
+    print(f"✓ Alerting complete: {alert_count} alerts generated\n")
+
+
+def run_from_step(step_name):
+    """Run pipeline starting from a specific step (skips previous steps)."""
+    print("\n" + "=" * 60)
+    print(f"Resuming Pipeline from: {step_name}")
+    print("=" * 60 + "\n")
+    
+    steps = {
+        "create_tables": create_tables,
+        "ingest_kev": ingest_kev,
+        "ingest_epss": ingest_epss,
+        "ingest_cve": ingest_cve,
+        "build_reports": build_reports,
+        "run_alerts": run_alerts
+    }
+    
+    # Find the starting step and run from there
+    step_names = list(steps.keys())
+    if step_name not in step_names:
+        print(f"❌ Unknown step: {step_name}")
+        return
+    
+    start_index = step_names.index(step_name)
+    
+    try:
+        for step in step_names[start_index:]:
+            steps[step]()
+        
+        print("=" * 60)
+        print("Pipeline execution complete!")
+        print("=" * 60 + "\n")
+    except Exception as e:
+        print(f"\n❌ Pipeline failed: {e}")
+        raise
 
 
 def run_full_pipeline():
@@ -92,6 +134,12 @@ def main():
         choices=["create_tables", "ingest_kev", "ingest_epss", "ingest_cve", "build_reports", "run_alerts"],
         help="Run a single step instead of the full pipeline"
     )
+    parser.add_argument(
+        "--from-step",
+        type=str,
+        choices=["create_tables", "ingest_kev", "ingest_epss", "ingest_cve", "build_reports", "run_alerts"],
+        help="Run pipeline starting from this step (skips previous steps)"
+    )
     
     args = parser.parse_args()
     
@@ -106,6 +154,8 @@ def main():
             "run_alerts": run_alerts
         }
         step_functions[args.step]()
+    elif args.from_step:
+        run_from_step(args.from_step)
     else:
         run_full_pipeline()
 

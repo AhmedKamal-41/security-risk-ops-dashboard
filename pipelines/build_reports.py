@@ -25,32 +25,46 @@ def run_reports_build():
     """
     df = fetch_df(query)
     
-    # Step 3: Compute and update risk scores
-    updated_count = 0
-    engine = get_engine()
-    
-    with engine.begin() as conn:
-        for _, row in df.iterrows():
-            # Compute risk score
-            risk_score = compute_risk_score(
+    # Step 3: Compute and update risk scores (bulk operation)
+    if not df.empty:
+        # Compute all risk scores at once
+        df['risk_score'] = df.apply(
+            lambda row: compute_risk_score(
                 cvss_score=row["cvss_score"],
                 is_kev=row["is_kev"],
                 epss_score=row["epss_score"],
                 age_days=row["age_days"]
+            ),
+            axis=1
+        )
+        
+        # Bulk update using temporary table approach (much faster)
+        engine = get_engine()
+        with engine.begin() as conn:
+            # Create temporary table with risk scores
+            df[['as_of_date', 'cve_id', 'risk_score']].to_sql(
+                'temp_risk_scores',
+                conn,
+                if_exists='replace',
+                index=False,
+                method='multi'
             )
             
-            # Update row with computed risk score
+            # Update report_cve_daily using temp table
             update_query = text("""
-                UPDATE report_cve_daily
-                SET risk_score = :risk_score
-                WHERE as_of_date = :as_of_date AND cve_id = :cve_id
+                UPDATE report_cve_daily r
+                SET risk_score = t.risk_score
+                FROM temp_risk_scores t
+                WHERE r.as_of_date = t.as_of_date 
+                  AND r.cve_id = t.cve_id
             """)
-            conn.execute(update_query, {
-                "risk_score": risk_score,
-                "as_of_date": row["as_of_date"],
-                "cve_id": row["cve_id"]
-            })
-            updated_count += 1
+            result = conn.execute(update_query)
+            updated_count = result.rowcount
+            
+            # Drop temporary table
+            conn.execute(text("DROP TABLE IF EXISTS temp_risk_scores"))
+    else:
+        updated_count = 0
     
     # Get count of inserted CVE rows (before updates)
     cve_count_query = """

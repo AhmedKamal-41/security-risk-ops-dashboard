@@ -1,3 +1,15 @@
-# Python dependencies
-# TODO: Add required packages
+# Python dependencies for Vulnerability Management Pipeline
 
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP requests
+requests>=2.31.0
+
+# Environment variables
+python-dotenv>=1.0.0

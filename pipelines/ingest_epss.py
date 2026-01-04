@@ -31,9 +31,11 @@ def fetch_epss_data():
         response.raise_for_status()
         
         # Decompress gzip content
+        # Skip first 3 rows (2 metadata + 1 header row), then use explicit column names
+        # Specify dtype to avoid warnings and handle mixed types
         compressed_data = io.BytesIO(response.content)
         with gzip.open(compressed_data, 'rt') as f:
-            df = pd.read_csv(f)
+            df = pd.read_csv(f, skiprows=3, names=['cve', 'epss', 'percentile'], dtype={'cve': str, 'epss': float, 'percentile': float}, low_memory=False)
         
         return df
     except requests.RequestException as e:
@@ -57,11 +59,16 @@ def normalize_epss(df):
     
     records = []
     for _, row in df.iterrows():
+        # Skip rows with null or empty CVE ID
+        cve_id = row.get("cve")
+        if pd.isna(cve_id) or not cve_id or str(cve_id).strip() == "":
+            continue
+        
         # Convert row to dict for JSON storage
         source_record = row.to_dict()
         
         record = {
-            "cve_id": row.get("cve"),
+            "cve_id": str(cve_id).strip(),
             "epss_date": epss_date,
             "epss_score": row.get("epss"),
             "percentile": row.get("percentile"),
@@ -73,8 +80,42 @@ def normalize_epss(df):
     normalized_df = pd.DataFrame(records)
     return normalized_df
 
-
 def upsert_epss(df):
+    """
+    Upsert EPSS data into raw_epss table using bulk operations.
+    
+    Args:
+        df: DataFrame with EPSS data
+        
+    Returns:
+        tuple: (inserted_count, updated_count)
+    """
+    if df.empty:
+        return 0, 0
+    
+    engine = get_engine()
+    
+    # Use PostgreSQL ON CONFLICT for efficient bulk upsert
+    with engine.begin() as conn:
+        # Delete existing records for today's date to avoid conflicts
+        delete_query = text("""
+            DELETE FROM raw_epss WHERE epss_date = CURRENT_DATE
+        """)
+        conn.execute(delete_query)
+        
+        # Bulk insert all records (much faster than row-by-row)
+        df.to_sql('raw_epss', conn, if_exists='append', index=False, method='multi', chunksize=10000)
+    
+    # Count inserted records
+    count_query = text("""
+        SELECT COUNT(*) as count FROM raw_epss WHERE epss_date = CURRENT_DATE
+    """)
+    with engine.connect() as conn:
+        result = conn.execute(count_query)
+        total_count = result.fetchone()[0]
+    
+    # Since we delete and re-insert, all are "inserted"
+    return total_count, 0
     """
     Upsert EPSS data into raw_epss table.
     

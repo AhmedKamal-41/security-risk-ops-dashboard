@@ -17,8 +17,8 @@ INSERT INTO report_product_daily (
 )
 SELECT
     CURRENT_DATE AS as_of_date,
-    vendor,
-    product,
+    COALESCE(vendor, 'Unknown') AS vendor,
+    COALESCE(product, 'Unknown') AS product,
     COUNT(*) AS open_vulns,
     COUNT(*) FILTER (WHERE severity IN ('High', 'Critical')) AS high_crit_count,
     COUNT(*) FILTER (WHERE is_kev = TRUE) AS kev_count,
@@ -26,4 +26,4 @@ SELECT
     AVG(risk_score) AS avg_risk_score
 FROM report_cve_daily
 WHERE as_of_date = CURRENT_DATE
-GROUP BY vendor, product;
+GROUP BY COALESCE(vendor, 'Unknown'), COALESCE(product, 'Unknown');

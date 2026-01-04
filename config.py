@@ -18,6 +18,9 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 # Optional Slack webhook URL
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 
+# Optional NVD API key for higher rate limits (get free key at https://nvd.nist.gov/developers/request-an-api-key)
+NVD_API_KEY = os.getenv("NVD_API_KEY")
+
 
 def get_env_var(key, default=None):
     """
