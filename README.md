@@ -9,6 +9,101 @@ This project provides a comprehensive pipeline for ingesting, processing, and re
 
 The pipeline processes this data, computes risk scores, generates daily reports, and creates alerts for high-risk vulnerabilities.
 
+## Data Sources & Metrics
+
+### Data Sources
+
+- **CVE (Common Vulnerabilities and Exposures)**: Standardized identifiers for publicly known cybersecurity vulnerabilities from the National Vulnerability Database (NVD). Each CVE includes severity ratings (CVSS scores), descriptions, and affected products.
+
+- **KEV (Known Exploited Vulnerabilities)**: CISA's catalog of vulnerabilities that are actively being exploited in the wild. These require immediate remediation and are assigned due dates for patching.
+
+- **EPSS (Exploit Prediction Scoring System)**: A machine learning model that predicts the likelihood (0.0 to 1.0) that a vulnerability will be exploited in the next 30 days. Higher scores indicate greater exploitation risk.
+
+### Key Metrics Explained
+
+- **Risk Score**: Composite score (0-10) combining CVSS, KEV status, EPSS, and vulnerability age. Higher scores indicate higher priority for remediation.
+  - Formula: `(CVSS × 0.4) + (KEV bonus: +2.0) + (EPSS × 5.0) + (Age in days × 0.01)`
+  - Thresholds: ≥8.0 = Critical Risk, ≥6.0 = High Risk, ≥4.0 = Medium Risk
+
+- **CVSS Score**: Base severity score (0-10) from NVD indicating vulnerability severity. Higher scores mean more severe vulnerabilities.
+
+- **EPSS Score**: Probability (0.0-1.0) that a vulnerability will be exploited. Scores ≥0.75 are considered high risk.
+
+- **KEV Status**: Boolean indicating if a vulnerability is in CISA's Known Exploited Vulnerabilities catalog. All KEVs require immediate attention.
+
+- **Age (days)**: Number of days since the vulnerability was published. Older vulnerabilities may have patches available.
+
+- **Severity**: Categorical rating (Critical, High, Medium, Low) based on CVSS scores.
+
+## Dashboard
+
+The project includes a comprehensive **Power BI Dashboard** with 5 interactive pages for visualizing and analyzing vulnerability data:
+
+### Page 1: Overview Dashboard
+Executive summary with high-level KPIs and key visualizations:
+- **4 KPI Cards**: Total CVEs, Average Risk Score, High/Critical Count, KEV Count
+- **Top Products by Average Risk Score**: Horizontal bar chart showing highest-risk products
+- **Risk Score Distribution**: Histogram showing vulnerability distribution across risk ranges
+
+![Overview Dashboard](images/dashboard-overview.png)
+
+### Page 2: CVE Details
+Detailed vulnerability analysis with advanced filtering:
+- **Interactive Filters**: Severity, KEV Status, Vendor, Risk Score range
+- **High Risk CVEs Counter**: Count of CVEs with risk score ≥ 8.0
+- **Detailed CVE Table**: Complete vulnerability information with color-coded risk scores
+  - CVE ID, Severity, Risk Score, CVSS Score, EPSS Score
+  - KEV Status, Age (days), Vendor, Product
+- **Risk Score vs EPSS Score Scatter Plot**: Correlation analysis with severity color coding
+
+![CVE Details Dashboard](images/dashboard-cve-details.png)
+
+### Page 3: Product Analysis
+Product-level risk assessment and comparison:
+- **Product Comparison Table**: Comprehensive metrics per vendor/product
+  - Open vulnerabilities, High/Critical count, KEV count
+  - Average EPSS, Average Risk Score (color-coded)
+- **3 KPI Cards**: High Risk Products (≥7.0), Total Vendors, Total Products
+- **Product Risk Matrix**: Scatter plot showing risk vs vulnerability count
+- **KEV Exposure by Vendor**: Horizontal bar chart showing KEV distribution
+
+![Product Analysis Dashboard](images/dashboard-product-analysis.png)
+
+### Page 4: Alerts Dashboard
+Real-time alert monitoring and analysis:
+- **4 KPI Cards**: Total Alerts, Critical Alerts, High Alerts, Recent Alerts (Last 7 Days)
+- **Security Alerts Table**: Complete alert details with severity color coding
+  - Created timestamp, Alert type, Scope, Severity, Message
+- **Alerts by Type Chart**: Distribution of alert types
+- **Alerts by Severity Chart**: Severity breakdown visualization
+
+**Alert Types:**
+- `kev_vulnerability`: Known Exploited Vulnerabilities (Critical)
+- `high_risk_cve`: CVEs with risk score ≥ 8.0 (High)
+- `high_epss`: CVEs with EPSS ≥ 0.75 (Medium)
+- `high_vuln_count`: Products with ≥ 50 vulnerabilities (Medium)
+- `high_avg_risk`: Products with avg risk ≥ 7.0 (High)
+
+![Alerts Dashboard](images/dashboard-alerts.png)
+
+### Page 5: KEV Details
+Comprehensive Known Exploited Vulnerabilities tracking:
+- **4 KPI Cards**: Total KEVs, KEVs Added This Year, Overdue KEVs, Affected Vendors
+- **KEV Details Table**: Complete KEV information
+  - CVE ID, Date Added, Due Date, Vendor, Product
+- **Top Products with KEVs**: Horizontal bar chart showing most affected products
+- **KEVs Added Over Time**: Time series showing KEV catalog growth
+
+![KEV Details Dashboard](images/dashboard-kev-details.png)
+
+### Dashboard Features
+- **Interactive Filtering**: Cross-page filtering, date-based analysis, severity/risk filtering
+- **Color Coding**: Risk scores and severity levels visually distinguished
+- **Live Data**: Connects to database for real-time updates
+- **Export Ready**: CSV export script included for easy Power BI import
+
+See `docs/powerbi.md` for detailed setup instructions.
+
 ## Installation
 
 1. **Clone the repository** (if applicable) or navigate to the project directory
@@ -193,7 +288,3 @@ Additional documentation:
 2. **EPSS Ingestion Slow**: This is normal for 300K+ records. The bulk operation should complete in 1-2 minutes
 3. **NULL Constraint Violations**: Ensure all required fields are populated (vendor/product use 'Unknown' for non-KEV CVEs)
 4. **Decimal Type Errors**: The scoring system handles PostgreSQL Decimal types automatically
-
-## License
-
-[Add your license here]
