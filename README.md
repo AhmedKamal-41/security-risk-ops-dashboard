@@ -1,5 +1,24 @@
 # Vulnerability Management Pipeline
 
+**Your Data-Driven Security Risk Operations Dashboard**
+
+---
+
+## Tech Stack
+
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue.svg)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-green.svg)
+![Pandas](https://img.shields.io/badge/Pandas-2.0+-orange.svg)
+![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-yellow.svg)
+![NumPy](https://img.shields.io/badge/NumPy-1.24+-blue.svg)
+![Requests](https://img.shields.io/badge/Requests-2.31+-green.svg)
+
+**Data Sources:**
+- [NVD API](https://nvd.nist.gov/developers/vulnerabilities) | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | [EPSS](https://www.first.org/epss/)
+
+---
+
 ## Overview
 
 This project provides a comprehensive pipeline for ingesting, processing, and reporting on vulnerability data from multiple sources including:
