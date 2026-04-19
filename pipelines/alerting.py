@@ -3,7 +3,7 @@ Alerting system for high-risk vulnerabilities.
 """
 
 from datetime import datetime
-from pipelines.db import get_engine, fetch_df, execute
+from pipelines.db import get_engine, fetch_df, execute, run_sql_file
 from sqlalchemy import text
 
 
@@ -155,6 +155,7 @@ def insert_alert(alert_type, scope, message, severity, metric_value):
         insert_query = text("""
             INSERT INTO alerts (created_at, alert_type, scope, message, severity, metric_value)
             VALUES (:created_at, :alert_type, :scope, :message, :severity, :metric_value)
+            ON CONFLICT (alert_type, scope, (DATE(created_at))) DO NOTHING
         """)
         conn.execute(insert_query, {
             "created_at": datetime.now(),
@@ -178,7 +179,6 @@ def run_alerting(use_sql=False):
     """
     if use_sql:
         # Use SQL file for alert generation
-        from pipelines.db import run_sql_file, fetch_df
         run_sql_file("sql/04_insert_alerts.sql")
         # Count generated alerts
         count_df = fetch_df("""

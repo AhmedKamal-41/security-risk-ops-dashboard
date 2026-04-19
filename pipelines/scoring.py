@@ -2,6 +2,8 @@
 Vulnerability scoring logic.
 """
 
+from decimal import Decimal
+
 # Scoring weights and constants
 CVSS_WEIGHT = 0.4
 KEV_BONUS = 2.0
@@ -30,8 +32,6 @@ def compute_risk_score(cvss_score, is_kev, epss_score, age_days):
         float: Computed risk score
     """
     # Handle None values safely and convert Decimal to float
-    from decimal import Decimal
-    
     if cvss_score is None:
         cvss = 0.0
     elif isinstance(cvss_score, Decimal):

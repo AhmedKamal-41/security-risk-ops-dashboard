@@ -1,0 +1,73 @@
+name: Daily pipeline
+
+# Runs the full vulnerability-management pipeline on a daily cron
+# schedule. Also exposes workflow_dispatch so operators can trigger
+# it manually from the GitHub UI (e.g. after bumping CVE_DAYS_BACK
+# to do an extended historical backfill).
+
+on:
+  schedule:
+    # 06:00 UTC every day. GitHub may delay cron runs by up to ~15m
+    # under heavy load; NVD and EPSS feeds refresh earlier so this
+    # window is comfortable.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      cve_days_back:
+        description: "How many days of CVE history to fetch (overrides default 3)"
+        required: false
+        default: "3"
+
+jobs:
+  run-pipeline:
+    name: Run full pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify DB_PASSWORD secret is configured
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "::error::DB_PASSWORD secret is not set. Configure it under Settings → Secrets and variables → Actions before enabling this workflow."
+            exit 1
+          fi
+          echo "DB_PASSWORD secret is configured (length: ${#DB_PASSWORD})."
+
+      - name: Run pipeline
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Daily cron fetches a small sliding window; manual dispatch
+          # can override via the cve_days_back input above.
+          CVE_DAYS_BACK: ${{ github.event.inputs.cve_days_back || '3' }}
+        run: python run.py
+
+      - name: Upload pipeline log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-log-${{ github.run_id }}
+          path: logs/pipeline.log
+          if-no-files-found: ignore
+          retention-days: 14

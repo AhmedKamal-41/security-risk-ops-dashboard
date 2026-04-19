@@ -32,7 +32,8 @@ FROM report_cve_daily
 WHERE as_of_date = CURRENT_DATE
   AND risk_score >= 8.0
 ORDER BY risk_score DESC
-LIMIT 100;
+LIMIT 100
+ON CONFLICT (alert_type, scope, (DATE(created_at))) DO NOTHING;
 
 -- Alert 2: KEV vulnerabilities (all known exploited)
 INSERT INTO alerts (created_at, alert_type, scope, message, severity, metric_value)
@@ -52,7 +53,8 @@ SELECT
 FROM report_cve_daily
 WHERE as_of_date = CURRENT_DATE
   AND is_kev = TRUE
-ORDER BY risk_score DESC NULLS LAST;
+ORDER BY risk_score DESC NULLS LAST
+ON CONFLICT (alert_type, scope, (DATE(created_at))) DO NOTHING;
 
 -- Alert 3: High EPSS score CVEs (EPSS >= 0.75)
 INSERT INTO alerts (created_at, alert_type, scope, message, severity, metric_value)
@@ -69,7 +71,8 @@ FROM report_cve_daily
 WHERE as_of_date = CURRENT_DATE
   AND epss_score >= 0.75
 ORDER BY epss_score DESC
-LIMIT 50;
+LIMIT 50
+ON CONFLICT (alert_type, scope, (DATE(created_at))) DO NOTHING;
 
 -- Alert 4: Products with high vulnerability counts (>= 50)
 INSERT INTO alerts (created_at, alert_type, scope, message, severity, metric_value)
@@ -87,7 +90,8 @@ FROM report_product_daily
 WHERE as_of_date = CURRENT_DATE
   AND open_vulns >= 50
 ORDER BY open_vulns DESC
-LIMIT 20;
+LIMIT 20
+ON CONFLICT (alert_type, scope, (DATE(created_at))) DO NOTHING;
 
 -- Alert 5: Products with high average risk scores (>= 7.0)
 INSERT INTO alerts (created_at, alert_type, scope, message, severity, metric_value)
@@ -105,7 +109,8 @@ WHERE as_of_date = CURRENT_DATE
   AND avg_risk_score >= 7.0
   AND open_vulns > 0
 ORDER BY avg_risk_score DESC
-LIMIT 20;
+LIMIT 20
+ON CONFLICT (alert_type, scope, (DATE(created_at))) DO NOTHING;
 
 -- View today's alerts
 -- SELECT * FROM alerts WHERE DATE(created_at) = CURRENT_DATE ORDER BY severity DESC, created_at DESC;

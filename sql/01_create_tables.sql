@@ -84,3 +84,11 @@ CREATE TABLE IF NOT EXISTS alerts (
     severity TEXT,
     metric_value NUMERIC
 );
+
+-- One alert per (alert_type, scope) per calendar day — makes the
+-- pipeline safe to rerun without producing duplicate rows.
+-- Postgres inline UNIQUE constraints can't contain expressions, so
+-- this is implemented as a UNIQUE expression index. ON CONFLICT
+-- targets must match the index expressions exactly; see alerting.py.
+CREATE UNIQUE INDEX IF NOT EXISTS alerts_unique_daily
+    ON alerts (alert_type, scope, (DATE(created_at)));

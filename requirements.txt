@@ -13,3 +13,11 @@ requests>=2.31.0
 
 # Environment variables
 python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.4.0
+
+# Notebook + visualization (for notebooks/dashboard_preview.ipynb)
+jupyter>=1.0.0
+matplotlib>=3.7.0
+seaborn>=0.13.0

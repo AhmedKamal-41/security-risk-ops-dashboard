@@ -21,6 +21,11 @@ SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
 # Optional NVD API key for higher rate limits (get free key at https://nvd.nist.gov/developers/request-an-api-key)
 NVD_API_KEY = os.getenv("NVD_API_KEY")
 
+# Number of days of CVE history to fetch from NVD on each ingestion run.
+# Raise this for the initial historical load; steady-state runs only need
+# to catch the last few days of newly published/modified CVEs.
+CVE_DAYS_BACK = int(os.getenv("CVE_DAYS_BACK", "30"))
+
 
 def get_env_var(key, default=None):
     """

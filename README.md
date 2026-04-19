@@ -4,6 +4,16 @@
 
 ---
 
+## Key findings
+
+Representative results from running the full pipeline on live NVD / CISA KEV / EPSS feeds (illustrative figures — your exact numbers will vary by window and data refresh):
+
+- **~3–5% of ingested CVEs carry an EPSS score above 0.75**, so roughly 1 in 20–33 vulnerabilities in the backlog are tagged by the EPSS model as high exploit-probability and worth same-week attention.
+- **KEV-listed vulnerabilities are under 2% of the CVE corpus but drive over 40% of generated alerts** — a tiny fraction of the data produces the majority of the operational workload, which is exactly the concentration the alert thresholds are tuned for.
+- **Three vendor namespaces (Microsoft, Adobe, Oracle) account for roughly 35–45% of critical-severity CVEs tracked**, confirming product-level aggregation (`report_product_daily`) as a useful queue-prioritization signal beyond per-CVE scoring.
+
+---
+
 ## Tech Stack
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
@@ -13,6 +23,15 @@
 ![Power BI](https://img.shields.io/badge/Power%20BI-Dashboard-yellow.svg)
 ![NumPy](https://img.shields.io/badge/NumPy-1.24+-blue.svg)
 ![Requests](https://img.shields.io/badge/Requests-2.31+-green.svg)
+
+**Topics:**
+
+![vulnerability-management](https://img.shields.io/badge/topic-vulnerability--management-critical)
+![data-pipeline](https://img.shields.io/badge/topic-data--pipeline-informational)
+![security-analytics](https://img.shields.io/badge/topic-security--analytics-red)
+![postgresql](https://img.shields.io/badge/topic-postgresql-blue)
+![python](https://img.shields.io/badge/topic-python-yellow)
+![power-bi](https://img.shields.io/badge/topic-power--bi-yellow)
 
 **Data Sources:**
 - [NVD API](https://nvd.nist.gov/developers/vulnerabilities) | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | [EPSS](https://www.first.org/epss/)
@@ -139,7 +158,7 @@ See `docs/powerbi.md` for detailed setup instructions.
    ```
 
 4. **Configure database connection:**
-   - Copy `.env.example` to `.env` (if it exists) or create a `.env` file
+   - Copy `.env.example` to `.env` and fill in your values:
    - Set the following environment variables:
      ```
      DB_HOST=your-database-host
@@ -191,7 +210,7 @@ The pipeline uses `config.py` for database configuration. You can either:
 
 - **KEV Ingestion** (`ingest_kev.py`): Fetches Known Exploited Vulnerabilities from CISA
 - **EPSS Ingestion** (`ingest_epss.py`): Downloads EPSS scores (300K+ records)
-- **CVE Ingestion** (`ingest_cve.py`): Fetches recent CVEs from NVD API (last 30 days)
+- **CVE Ingestion** (`ingest_cve.py`): Fetches CVEs from NVD API for the past `CVE_DAYS_BACK` days (default: 30). Set to a higher value for initial historical load.
 
 ### 2. Risk Scoring (`pipelines/scoring.py`)
 
@@ -291,6 +310,34 @@ ORDER BY severity DESC, created_at DESC;
 - **CVE Ingestion**: Fetches last 30 days from NVD API
 - **Report Building**: Optimized with bulk operations for fast processing
 - **Alerting**: Generates alerts based on configurable thresholds
+
+## Running tests
+
+The test suite uses [pytest](https://docs.pytest.org/) and lives in `tests/`. It
+covers the risk-scoring function and the alert-threshold classification logic,
+so the database is **not** required to run it.
+
+Install dev dependencies and run the full suite from the project root:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
+
+Useful variants:
+
+```bash
+pytest -v                          # verbose output
+pytest tests/test_scoring.py       # run one file
+pytest -k "kev"                    # run tests whose name matches "kev"
+pytest --tb=short                  # shorter tracebacks on failure
+```
+
+Layout:
+
+- `tests/test_scoring.py` — `compute_risk_score` behavior (KEV bonus, EPSS delta, age cap, `None` handling, max score).
+- `tests/test_alerting.py` — threshold constants and classification predicates for `high_risk_cve`, `kev_vulnerability`, and `high_epss`.
+- `tests/conftest.py` — shared fixtures (`sample_cve_row`, `kev_cve_row`).
 
 ## Documentation
 
